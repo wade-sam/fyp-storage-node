@@ -1,0 +1,13 @@
+{
+	"backupserver": "192.168.1.1",
+	"storagenode": "storagenode",
+	"RabbitDetails": {
+		"schema": "amqp",
+		"username": "admin",
+		"password": "85v!AP",
+		"host": "127.0.0.1",
+		"port": "5672",
+		"vhost": "/",
+		"conname": ""
+	}
+}
