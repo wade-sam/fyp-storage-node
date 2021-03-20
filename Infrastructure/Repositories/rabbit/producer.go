@@ -16,11 +16,20 @@ type ProducerConfig struct {
 	RoutingKey   string
 	MaxAttempt   int
 	Interval     time.Duration
-	connection   *amqp.Connection
+	Connection   *amqp.Connection
 }
 
-func (b *Broker) Publish(Type string, body *DTO) error {
-	channel, err := b.Channel()
+type Producer struct {
+	Producer ProducerConfig
+}
+
+func NewProducer(p ProducerConfig) *Producer {
+	return &Producer{
+		Producer: p,
+	}
+}
+func (p *Producer) Publish(Type string, body *DTO) error {
+	channel, err := p.Producer.Connection.Channel()
 	if err != nil {
 		return err
 	}
@@ -30,10 +39,10 @@ func (b *Broker) Publish(Type string, body *DTO) error {
 	if err != nil {
 		log.Println(err)
 	}
-	fmt.Println(Type, "", b.Producer.RoutingKey)
+	fmt.Println(Type, "", p.Producer.RoutingKey)
 	err = channel.Publish(
-		b.Producer.ExchangeName,
-		b.Producer.RoutingKey,
+		p.Producer.ExchangeName,
+		p.Producer.RoutingKey,
 		false,
 		false,
 		amqp.Publishing{
@@ -48,5 +57,15 @@ func (b *Broker) Publish(Type string, body *DTO) error {
 	r := &entity.Directory{}
 	err = json.Unmarshal([]byte(data), &r)
 	fmt.Println("Sent message back")
+	return nil
+}
+
+func (p *Producer) SendBackupSetup(id string) error {
+	dto := DTO{}
+	dto.Data = id
+	err := p.Publish("StorageNode.Job", &dto)
+	if err != nil {
+		return err
+	}
 	return nil
 }

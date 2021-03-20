@@ -4,6 +4,7 @@ import "encoding/json"
 
 type Directory struct {
 	Name       string                `json:"name,omitempty"`
+	Path       string                `json:"path"`
 	Properties []string              `json:"properties,omitempty"`
 	Files      []*File               `json:"files,omitempty"`
 	Folders    map[string]*Directory `json:"folders,omitempty"`

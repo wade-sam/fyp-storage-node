@@ -1,12 +1,15 @@
-package rabbit
+package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"time"
 
 	"github.com/streadway/amqp"
+	"github.com/wade-sam/fypstoragenode/Infrastructure/Repositories/rabbit"
+	"github.com/wade-sam/fypstoragenode/usecase/backup"
 )
 
 type ConsumerConfig struct {
@@ -17,7 +20,7 @@ type ConsumerConfig struct {
 	ConsumerName string
 	MaxAttempt   int
 	Interval     time.Duration
-	connection   *amqp.Connection
+	Connection   *amqp.Connection
 	Channels     *Channels
 }
 
@@ -31,10 +34,21 @@ type DTO struct {
 	Title string
 	Data  interface{} `json:"data"`
 }
+type Consumer struct {
+	Consumer ConsumerConfig
+	Backup   backup.BackupService
+}
 
-func (b *Broker) Start() (*amqp.Channel, error) {
+func NewConsumerRepo(c ConsumerConfig, b backup.BackupService) *Consumer {
+	return &Consumer{
+		Consumer: c,
+		Backup:   b,
+	}
+}
 
-	con, err := b.Connection()
+func (c *Consumer) Start() (*amqp.Channel, error) {
+
+	con, err := c.Connection()
 	if err != nil {
 		return nil, err
 	}
@@ -44,8 +58,8 @@ func (b *Broker) Start() (*amqp.Channel, error) {
 	}
 
 	if err := chn.ExchangeDeclare(
-		b.Consumer.ExchangeName,
-		b.Consumer.ExchangeType,
+		c.Consumer.ExchangeName,
+		c.Consumer.ExchangeType,
 		true,
 		false,
 		false,
@@ -55,7 +69,7 @@ func (b *Broker) Start() (*amqp.Channel, error) {
 		return nil, err
 	}
 	if _, err := chn.QueueDeclare(
-		b.Consumer.QueueName,
+		c.Consumer.QueueName,
 		true,
 		false,
 		false,
@@ -66,9 +80,9 @@ func (b *Broker) Start() (*amqp.Channel, error) {
 	}
 
 	if err := chn.QueueBind(
-		b.Consumer.QueueName,
-		b.Consumer.RoutingKey,
-		b.Consumer.ExchangeName,
+		c.Consumer.QueueName,
+		c.Consumer.RoutingKey,
+		c.Consumer.ExchangeName,
 		false,
 		nil,
 	); err != nil {
@@ -77,10 +91,10 @@ func (b *Broker) Start() (*amqp.Channel, error) {
 	return chn, nil
 }
 
-func (b *Broker) Consume(channel *amqp.Channel) error {
+func (c *Consumer) Consume(channel *amqp.Channel) error {
 	msgs, err := channel.Consume(
-		b.Consumer.QueueName,
-		b.Consumer.ConsumerName,
+		c.Consumer.QueueName,
+		c.Consumer.ConsumerName,
 		false,
 		false,
 		false,
@@ -91,8 +105,9 @@ func (b *Broker) Consume(channel *amqp.Channel) error {
 		return err
 	}
 	for msg := range msgs {
-		d := DTO{}
+		d := rabbit.DTO{}
 		err = json.Unmarshal(msg.Body, &d)
+		fmt.Println(msg.Type)
 		//_, err := Deserialize(msg.Body)
 		if err != nil {
 			log.Println("Can't deserialise message", err)
@@ -100,14 +115,15 @@ func (b *Broker) Consume(channel *amqp.Channel) error {
 
 		switch msg.Type {
 		case "New.Backup.Job":
-			b.Consumer.Channels.Backup <- d
+			d.Title = msg.Type
+			c.Backup.NewBackupRun(&d)
+			//c.Consumer.Channels.Backup <- d
 		case "Full.Backup":
 			//dto := DTO{}
 			//dto.Title = msg.Type
 			//dto.Data = msg.Body
 			fmt.Println("DATA", d.Data)
-			d.Title = msg.Type
-			b.Consumer.Channels.Backup <- d
+
 			fmt.Println("placed")
 		case "Full.Restore":
 
@@ -117,4 +133,11 @@ func (b *Broker) Consume(channel *amqp.Channel) error {
 	}
 	log.Println("Exiting")
 	return nil
+}
+
+func (c *Consumer) Connection() (*amqp.Connection, error) {
+	if c.Consumer.Connection == nil || c.Consumer.Connection.IsClosed() {
+		return nil, errors.New("connection isnt open")
+	}
+	return c.Consumer.Connection, nil
 }

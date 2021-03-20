@@ -2,10 +2,10 @@ package writetofile
 
 import (
 	"compress/gzip"
-	"container/list"
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strconv"
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/wade-sam/fypstoragenode/entity"
@@ -13,7 +13,9 @@ import (
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
-type FileRepo struct{}
+type FileRepo struct {
+	BackupLocation string
+}
 
 type FileStruct struct {
 	BackupServer  string `json:"backupserver"`
@@ -31,8 +33,10 @@ type RabbitConfig struct {
 	ConnectionName string `json:"conname"`
 }
 
-func NewFileRepo() *FileRepo {
-	return &FileRepo{}
+func NewFileRepo(location string) *FileRepo {
+	return &FileRepo{
+		BackupLocation: location,
+	}
 }
 
 func ReadInJsonFile() (*FileStruct, error) {
@@ -94,15 +98,47 @@ func (f *FileRepo) SetStorageNode(ip string) error {
 	return nil
 }
 
-func (f *FileRepo) CreateDirectoryLayout(client string, directories *entity.Directory) error {
-	visited := make(map[string]*entity.Directory)
-	queue := list.New()
-	queue.PushBack(n)
-	visited[n.Name] = n
+func (f *FileRepo) CreateDirectoryLayout(path string, permissions []string) error {
+	perms, err := strconv.ParseInt(permissions[0], 0, 32)
+	if err != nil {
+		return err
+	}
+	fmt.Println(permissions)
+	os.Mkdir(path, os.FileMode(perms))
+	os.Chmod(path, os.FileMode(perms))
+	uid, err := strconv.Atoi(permissions[1])
+	if err != nil {
+		return err
+	}
+	gid, err := strconv.Atoi(permissions[2])
+	err = os.Chown(path, uid, gid)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
-func (f *FileRepo) CreateBackupResult(files map[string]*entity.FileDTO) error {
+func (f *FileRepo) CreateJobLayout(clients []string, policyname string) (map[string]string, string, error) {
+	clientsLocation := make(map[string]string)
+	policyLocation := f.BackupLocation + "/" + policyname
+	fmt.Println("policy location", policyLocation)
+	err := os.Mkdir(policyLocation, 666)
+	if err != nil {
+		return nil, "", err
+	}
+	for _, j := range clients {
+		clientLocation := policyLocation + "/" + j
+		fmt.Println("client location", clientLocation)
+		err = os.Mkdir(clientLocation, 666)
+		if err != nil {
+			return nil, "", err
+		}
+		clientsLocation[j] = clientLocation
+	}
+	return clientsLocation, policyLocation, nil
+}
+
+func (f *FileRepo) CreateBackupResult(files map[string]*entity.ClientFile) error {
 	output, err := json.MarshalIndent(files, "", "   ")
 	if err != nil {
 		fmt.Println(entity.ErrCouldNotMarshallJSON)
@@ -123,8 +159,8 @@ func (f *FileRepo) CreateBackupResult(files map[string]*entity.FileDTO) error {
 	return nil
 }
 
-func (f *FileRepo) GetPreviousBackupResult() (map[string]*entity.FileDTO, error) {
-	var files map[string]*entity.FileDTO
+func (f *FileRepo) GetPreviousBackupResult() (map[string]*entity.ClientFile, error) {
+	var files map[string]*entity.ClientFile
 	fi, err := os.Open("backup_config.gzip")
 	if err != nil {
 		return nil, err

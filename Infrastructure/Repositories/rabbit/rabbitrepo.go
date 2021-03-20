@@ -18,22 +18,22 @@ type BrokerConfig struct {
 }
 
 type Broker struct {
-	config     BrokerConfig
-	connection *amqp.Connection
-	Producer   ProducerConfig
-	Consumer   ConsumerConfig
+	config           BrokerConfig
+	BrokerConnection *amqp.Connection
+}
+type DTO struct {
+	Title string
+	Data  interface{} `json:"data"`
 }
 
-func NewBroker(config BrokerConfig, producerconfig ProducerConfig, consumerconfig ConsumerConfig) *Broker {
+func NewBroker(config BrokerConfig) *Broker {
 	return &Broker{
-		config:   config,
-		Producer: producerconfig,
-		Consumer: consumerconfig,
+		config: config,
 	}
 }
 
 func (r *Broker) Connect() error {
-	if r.connection == nil || r.connection.IsClosed() {
+	if r.BrokerConnection == nil || r.BrokerConnection.IsClosed() {
 		conn, err := amqp.Dial(fmt.Sprintf("%s://%s:%s@%s:%s/%s",
 			r.config.Schema,
 			r.config.Username,
@@ -45,12 +45,12 @@ func (r *Broker) Connect() error {
 		if err != nil {
 			return err
 		}
-		r.connection = conn
+		r.BrokerConnection = conn
 	}
 	return nil
 }
 func (r *Broker) Channel() (*amqp.Channel, error) {
-	chn, err := r.connection.Channel()
+	chn, err := r.BrokerConnection.Channel()
 	if err != nil {
 		return nil, err
 	}
@@ -58,8 +58,8 @@ func (r *Broker) Channel() (*amqp.Channel, error) {
 }
 
 func (r *Broker) Connection() (*amqp.Connection, error) {
-	if r.connection == nil || r.connection.IsClosed() {
+	if r.BrokerConnection == nil || r.BrokerConnection.IsClosed() {
 		return nil, errors.New("connection isnt open")
 	}
-	return r.connection, nil
+	return r.BrokerConnection, nil
 }
