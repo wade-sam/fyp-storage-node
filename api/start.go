@@ -2,6 +2,7 @@ package main
 
 import (
 	//"github.com/wade-sam/fypstoragenode/entity"
+
 	"log"
 	"time"
 
@@ -77,6 +78,7 @@ func main() {
 
 	consumer_repo := handler.NewConsumerRepo(consumerConf, *backup_service)
 	consumer_chan, err := consumer_repo.Start()
+
 	if err != nil {
 		log.Fatal("ERR", err)
 	}

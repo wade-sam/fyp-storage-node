@@ -13,8 +13,9 @@ type Repository struct {
 	Address    string
 	Port       string
 	Conn_type  string
-	Connection *net.Conn
+	Connection net.Conn
 	Decoder    *gob.Decoder
+	Status     bool
 }
 type FileTransfer struct {
 	SNFile *entity.File `json:"metadata"`
@@ -40,10 +41,8 @@ type SockDirectory struct {
 }
 
 type SockFile struct {
-	ID     string       `json:"id"`
-	Type   string       `json="type"`
-	Client string       `json="client"`
-	Item   *entity.File `json="item"`
+	Metadata *entity.File
+	Data     []byte
 }
 
 func NewRepository(address, port, conn_type string) *Repository {
@@ -51,44 +50,64 @@ func NewRepository(address, port, conn_type string) *Repository {
 		Address:   address,
 		Port:      port,
 		Conn_type: conn_type,
+		Status:    true,
 	}
 }
 
 func (sock *Repository) Start(chn chan *SockItem) error {
+	sock.Status = true
 	port := fmt.Sprintf(":%v", sock.Port)
 	dstream, err := net.Listen(sock.Conn_type, port)
 	if err != nil {
-		fmt.Println("1", err)
+		fmt.Println("Error Could not listen on port", err)
 		return err
 	}
+	log.Println("Opened TCP Stream")
 	con, err := dstream.Accept()
 	if err != nil {
-		fmt.Println("2", err)
+		log.Println("Error Client Not Accepted", err)
 		return err
 	}
-	sock.Connection = &con
-	sock.Decoder = gob.NewDecoder(*sock.Connection)
+	sock.Connection = con
+	sock.Decoder = gob.NewDecoder(sock.Connection)
 
-	fmt.Println("CONNECTION!!!!", sock.Connection)
-	go sock.ReceiveBackupData(chn)
+	fmt.Println("Client Connected")
+	sock.ReceiveBackupData(chn)
+	err = sock.Connection.Close()
+	if err != nil {
+		log.Println(err)
+	}
+	fmt.Println("Closed Succesfully", err)
+	close(chn)
+	dstream.Close()
+	return nil
+}
+
+func (sock *Repository) End() error {
+	sock.Status = false
 	return nil
 }
 
 func (sock *Repository) ReceiveBackupData(chn chan *SockItem) {
-	condition := false
 
 	dto := SockItem{}
-	for condition == false {
+	for sock.Status == true {
 		gob.Register(&entity.Directory{})
+		gob.Register(&SockFile{})
 		err := sock.Decoder.Decode(&dto)
 		//i, err := bufio.NewReader(*socket.connection).ReadByte()
 		if err != nil {
 			log.Println(err)
 		}
 		if dto.Type == "clientcomplete" {
-			close(chn)
-		} else {
 			chn <- &dto
+			fmt.Println("close socket message", dto.ID)
+			return
+			//condition = true
+		} else {
+			//fmt.Println("new socket message", dto.ID)
+			chn <- &dto
+			//sock.Connection.Close()
 		}
 
 	}

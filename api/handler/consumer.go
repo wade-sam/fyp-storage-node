@@ -105,6 +105,7 @@ func (c *Consumer) Consume(channel *amqp.Channel) error {
 		return err
 	}
 	for msg := range msgs {
+		fmt.Println("new Backup Job")
 		d := rabbit.DTO{}
 		err = json.Unmarshal(msg.Body, &d)
 		fmt.Println(msg.Type)
@@ -116,7 +117,9 @@ func (c *Consumer) Consume(channel *amqp.Channel) error {
 		switch msg.Type {
 		case "New.Backup.Job":
 			d.Title = msg.Type
-			c.Backup.NewBackupRun(&d)
+
+			go c.Backup.NewBackupRun(&d)
+
 			//c.Consumer.Channels.Backup <- d
 		case "Full.Backup":
 			//dto := DTO{}

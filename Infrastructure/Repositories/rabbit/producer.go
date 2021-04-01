@@ -2,8 +2,6 @@ package rabbit
 
 import (
 	"encoding/json"
-	"fmt"
-	"log"
 	"time"
 
 	"github.com/streadway/amqp"
@@ -37,9 +35,10 @@ func (p *Producer) Publish(Type string, body *DTO) error {
 	data, err := json.Marshal(body.Data)
 	//dto, err := Serialize(body)
 	if err != nil {
-		log.Println(err)
+		return err
+		//log.Println(err)
 	}
-	fmt.Println(Type, "", p.Producer.RoutingKey)
+	//fmt.Println(Type, "", p.Producer.RoutingKey)
 	err = channel.Publish(
 		p.Producer.ExchangeName,
 		p.Producer.RoutingKey,
@@ -56,7 +55,7 @@ func (p *Producer) Publish(Type string, body *DTO) error {
 	}
 	r := &entity.Directory{}
 	err = json.Unmarshal([]byte(data), &r)
-	fmt.Println("Sent message back")
+	//fmt.Println("Sent message back")
 	return nil
 }
 
@@ -64,6 +63,17 @@ func (p *Producer) SendBackupSetup(id string) error {
 	dto := DTO{}
 	dto.Data = id
 	err := p.Publish("StorageNode.Job", &dto)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (p *Producer) SendBackupFileMessage(msg *entity.ClientFile) error {
+	dto := DTO{
+		Data: msg,
+	}
+	err := p.Publish("StorageNode.File", &dto)
 	if err != nil {
 		return err
 	}

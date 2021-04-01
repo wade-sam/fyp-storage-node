@@ -15,16 +15,18 @@ type Usecase interface {
 
 type RabbitRepository interface {
 	SendBackupSetup(id string) error
-	//SendFileMessage(name, checksum string) error
+	SendBackupFileMessage(client_file *entity.ClientFile) error
 }
 
 type SocketRepository interface {
 	Start(chn chan (*socket.SockItem)) error
-	//End() error
+	End() error
 }
 
 type FileRepository interface {
 	CreateJobLayout(clients []string, policyname string) (map[string]string, string, error)
 	CreateDirectoryLayout(path string, permissions []string) error
+	CreateFile(client, path string, file *socket.SockFile) error
+	CreateBackupReport(client, path string, files map[string]interface{}) error
 	//ClientFile(path string, perms []string) error
 }
