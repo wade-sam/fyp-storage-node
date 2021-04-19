@@ -42,7 +42,7 @@ func NewFileRepo(location string) *FileRepo {
 
 func ReadInJsonFile() (*FileStruct, error) {
 	var file FileStruct
-	jsonFile, err := os.Open("/home/sam/Documents/fyp-storage_node/Infrastructure/Repositories/writetofile/config.json")
+	jsonFile, err := os.Open("/Users/sam/Documents/storage-node/Infrastructure/Repositories/writetofile/config.json")
 	if err != nil {
 		return nil, entity.ErrFileNotFound
 	}
@@ -60,7 +60,7 @@ func WriteJsonFile(file *FileStruct) error {
 	if err != nil {
 		return entity.ErrCouldNotMarshallJSON
 	}
-	err = ioutil.WriteFile("/home/sam/Documents/fyp-storage_node/Infrastructure/Repositories/writetofile/config.json", outputFile, 0775)
+	err = ioutil.WriteFile("/Users/sam/Documents/storage-node/Infrastructure/Repositories/writetofile/config.json", outputFile, 0775)
 	if err != nil {
 		return entity.ErrCouldNotWriteToFile
 	}

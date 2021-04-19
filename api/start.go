@@ -17,7 +17,7 @@ import (
 )
 
 func main() {
-	wtf := writetofile.NewFileRepo("/home/sam/backup")
+	wtf := writetofile.NewFileRepo("/Users/sam/backuptemp")
 	config_service := configuration.NewConfigurationService(wtf)
 	conn_name, err := config_service.GetStorageNode()
 
