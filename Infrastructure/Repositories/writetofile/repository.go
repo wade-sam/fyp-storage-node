@@ -132,6 +132,7 @@ func (f *FileRepo) CreateFile(client, path string, file *socket.SockFile) error 
 	if err != nil {
 		return err
 	}
+	filePlacement.Close()
 	return nil
 }
 

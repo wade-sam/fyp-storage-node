@@ -169,6 +169,7 @@ func (service *BackupService) WriteFileSetup(client string, file *socket.SockFil
 	err = service.FileRepo.CreateFile(client, path.Clean(filePath), file)
 	if err != nil {
 		msg.Status = "Failed"
+		log.Println("EROR REACHED", err)
 		return &msg, err
 	}
 	msg.Status = "Success"

@@ -102,7 +102,7 @@ func (sock *Repository) ReceiveBackupData(chn chan *SockItem) {
 		if dto.Type == "clientcomplete" {
 			chn <- &dto
 			fmt.Println("close socket message", dto.ID)
-			return
+			//return
 			//condition = true
 		} else {
 			//fmt.Println("new socket message", dto.ID)
