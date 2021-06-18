@@ -19,7 +19,7 @@ type RabbitRepository interface {
 }
 
 type SocketRepository interface {
-	Start(chn chan (*socket.SockItem)) error
+	Start(chn chan (*socket.SockItem), clientslength int) error
 	End() error
 }
 

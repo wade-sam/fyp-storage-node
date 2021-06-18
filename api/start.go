@@ -18,6 +18,10 @@ import (
 
 func main() {
 	wtf := writetofile.NewFileRepo("/home/sam/backup")
+	_, err := wtf.GetBackupDir()
+	if err != nil {
+		log.Println("Could not find Backup Location", err)
+	}
 	config_service := configuration.NewConfigurationService(wtf)
 	conn_name, err := config_service.GetStorageNode()
 

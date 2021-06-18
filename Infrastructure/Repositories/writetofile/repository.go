@@ -4,6 +4,7 @@ import (
 	"compress/gzip"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"strconv"
 
@@ -21,6 +22,7 @@ type FileRepo struct {
 type FileStruct struct {
 	BackupServer  string `json:"backupserver"`
 	StorageNode   string `json:"storagenode"`
+	Filelocation  string `json:"backuplocation"`
 	RabbitDetails *RabbitConfig
 }
 
@@ -36,13 +38,14 @@ type RabbitConfig struct {
 
 func NewFileRepo(location string) *FileRepo {
 	return &FileRepo{
-		BackupLocation: location,
+		//BackupLocation: location,
 	}
 }
 
 func ReadInJsonFile() (*FileStruct, error) {
 	var file FileStruct
-	jsonFile, err := os.Open("/home/sam/Documents/fyp-storage_node/Infrastructure/Repositories/writetofile/config.json")
+	// jsonFile, err := os.Open("/home/sam/Documents/fyp-storage_node/Infrastructure/Repositories/writetofile/config.json")
+	jsonFile, err := os.Open("config.json")
 	if err != nil {
 		return nil, entity.ErrFileNotFound
 	}
@@ -56,11 +59,12 @@ func ReadInJsonFile() (*FileStruct, error) {
 }
 
 func WriteJsonFile(file *FileStruct) error {
-	outputFile, err := json.MarshalIndent(file, "", "	")
+	outputFile, err := json.MarshalIndent(file, "", " ")
 	if err != nil {
 		return entity.ErrCouldNotMarshallJSON
 	}
-	err = ioutil.WriteFile("/home/sam/Documents/fyp-storage_node/Infrastructure/Repositories/writetofile/config.json", outputFile, 0775)
+	// err = ioutil.WriteFile("/home/sam/Documents/fyp-storage_node/Infrastructure/Repositories/writetofile/config.json", outputFile, 0775)
+	err = ioutil.WriteFile("config.json", outputFile, 0775)
 	if err != nil {
 		return entity.ErrCouldNotWriteToFile
 	}
@@ -75,6 +79,17 @@ func (f *FileRepo) GetStorageNode() (string, error) {
 	storagenode := file.StorageNode
 	fmt.Println(storagenode)
 	return storagenode, nil
+}
+
+func (f *FileRepo) GetBackupDir() (string, error) {
+	file, err := ReadInJsonFile()
+	if err != nil {
+		return "", err
+	}
+	backuplocation := file.Filelocation
+	f.BackupLocation = backuplocation
+	log.Println("BackupLocation set", f.BackupLocation)
+	return "", nil
 }
 
 func (f *FileRepo) GetRabbitDetails() (*RabbitConfig, error) {

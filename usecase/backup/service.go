@@ -70,7 +70,7 @@ func (service *BackupService) NewBackupRun(dto *rabbit.DTO) {
 	service.Storage = storage
 
 	chn := make(chan (*socket.SockItem))
-	go service.SockRepo.Start(chn)
+	go service.SockRepo.Start(chn, len(sndto.Clients))
 	err = service.RabbitRepo.SendBackupSetup(jobpath)
 	if err != nil {
 		service.SockRepo.End()
@@ -78,15 +78,26 @@ func (service *BackupService) NewBackupRun(dto *rabbit.DTO) {
 		log.Println("Error sending backup setup to server", err)
 		return
 	}
-	err = service.ReceiveData(chn)
-	if err != nil {
-		service.SockRepo.End()
-		close(chn)
-		return
+	for c := 1; c <= len(sndto.Clients); c++ {
+		log.Println(len(sndto.Clients))
+		err = service.ReceiveData(chn)
+		if err != nil {
+			log.Println(err)
+			continue
+		}
 	}
+	//service.SockRepo.End()
+	//close(chn)
+	// err = service.ReceiveData(chn)
+	// if err != nil {
+	// 	service.SockRepo.End()
+	// 	close(chn)
+	service.Storage = StorageDetails{}
+	return
+	//}
 
 	fmt.Println("Completed backup")
-	service.Storage = StorageDetails{}
+	
 }
 
 func (service *BackupService) ReceiveData(chn chan *socket.SockItem) error {
@@ -114,7 +125,8 @@ func (service *BackupService) ReceiveData(chn chan *socket.SockItem) error {
 			response, err := service.WriteFileSetup(msg.Client, &sockfile)
 			if err != nil {
 				log.Println("Error Couldn't write file: ", err)
-				return err
+				service.RabbitRepo.SendBackupFileMessage(response)
+				//return err
 			}
 			if response.Status == "Success" {
 				service.RabbitRepo.SendBackupFileMessage(response)

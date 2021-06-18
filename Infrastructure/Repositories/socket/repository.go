@@ -54,7 +54,8 @@ func NewRepository(address, port, conn_type string) *Repository {
 	}
 }
 
-func (sock *Repository) Start(chn chan *SockItem) error {
+func (sock *Repository) Start(chn chan *SockItem, clientcount int) error {
+
 	sock.Status = true
 	port := fmt.Sprintf(":%v", sock.Port)
 	dstream, err := net.Listen(sock.Conn_type, port)
@@ -63,16 +64,26 @@ func (sock *Repository) Start(chn chan *SockItem) error {
 		return err
 	}
 	log.Println("Opened TCP Stream")
-	con, err := dstream.Accept()
-	if err != nil {
-		log.Println("Error Client Not Accepted", err)
-		return err
+	for sock.Status == true {
+		con, err := dstream.Accept()
+		if err != nil {
+			log.Println("Error Client Not Accepted", err)
+			return err
+		}
+		sock.Connection = con
+		sock.Decoder = gob.NewDecoder(sock.Connection)
+		go sock.ReceiveBackupData(chn, clientcount)
+		fmt.Println("Client Connected")
 	}
-	sock.Connection = con
-	sock.Decoder = gob.NewDecoder(sock.Connection)
+	// con, err := dstream.Accept()
+	// if err != nil {
+	// 	log.Println("Error Client Not Accepted", err)
+	// 	return err
+	// }
+	// sock.Connection = con
+	// sock.Decoder = gob.NewDecoder(sock.Connection)
 
-	fmt.Println("Client Connected")
-	sock.ReceiveBackupData(chn)
+	// fmt.Println("Client Connected")
 	err = sock.Connection.Close()
 	if err != nil {
 		log.Println(err)
@@ -88,10 +99,10 @@ func (sock *Repository) End() error {
 	return nil
 }
 
-func (sock *Repository) ReceiveBackupData(chn chan *SockItem) {
-
+func (sock *Repository) ReceiveBackupData(chn chan *SockItem, repeat int) {
+	count := true
 	dto := SockItem{}
-	for sock.Status == true {
+	for count != false {
 		gob.Register(&entity.Directory{})
 		gob.Register(&SockFile{})
 		err := sock.Decoder.Decode(&dto)
@@ -102,6 +113,8 @@ func (sock *Repository) ReceiveBackupData(chn chan *SockItem) {
 		if dto.Type == "clientcomplete" {
 			chn <- &dto
 			fmt.Println("close socket message", dto.ID)
+			count = false
+			log.Println("socket", count)
 			//return
 			//condition = true
 		} else {
