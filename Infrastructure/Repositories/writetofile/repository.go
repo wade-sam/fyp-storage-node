@@ -44,8 +44,10 @@ func NewFileRepo(location string) *FileRepo {
 
 func ReadInJsonFile() (*FileStruct, error) {
 	var file FileStruct
+
 	// jsonFile, err := os.Open("/home/sam/Documents/fyp-storage_node/Infrastructure/Repositories/writetofile/config.json")
 	jsonFile, err := os.Open("config.json")
+
 	if err != nil {
 		return nil, entity.ErrFileNotFound
 	}
